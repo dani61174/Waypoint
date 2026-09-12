@@ -1,0 +1,1265 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Waypoint — Daniel & Liran</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  /* ===== NEW COLOR SYSTEM — slate indigo + sky + coral ===== */
+  --bg:#F5F6FA;
+  --surface:#FFFFFF;
+  --surface-2:#EEF0F8;
+  --ink:#1B2138;
+  --muted:#6B7280;
+  --muted-2:#9CA3B0;
+  --line:#E5E7F0;
+
+  --primary:#33417A;
+  --primary-dark:#232C57;
+  --primary-tint:#E9EBF6;
+
+  --sky:#4FADD9;
+  --sky-tint:#E6F4FA;
+
+  --accent:#F0703F;
+  --accent-tint:#FDE9DF;
+
+  --success:#2E9E63;
+  --success-tint:#E4F5EB;
+  --warning:#E3A02E;
+  --warning-tint:#FBF1DD;
+  --danger:#DD4E45;
+  --danger-tint:#FBE5E3;
+
+  --radius:16px;
+  --radius-sm:10px;
+  --shadow:0 1px 2px rgba(27,33,56,.04), 0 8px 20px rgba(27,33,56,.06);
+  --shadow-sm:0 1px 3px rgba(27,33,56,.08);
+}
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:'Rubik',sans-serif; line-height:1.55;
+  padding-bottom:78px; -webkit-tap-highlight-color:transparent;
+}
+h1,h2,h3,h4{font-family:'Rubik',sans-serif; font-weight:700; margin:0;}
+a{color:inherit;}
+button{font-family:'Rubik',sans-serif; cursor:pointer;}
+.wrap{max-width:720px; margin:0 auto; padding:0 16px;}
+::selection{background:var(--sky-tint);}
+
+/* ===== HEADER ===== */
+.app-header{background:var(--primary); color:#fff; padding:16px 0 14px;}
+.app-header .wrap{display:flex; flex-direction:column; gap:8px;}
+.app-title-row{display:flex; align-items:center; justify-content:space-between;}
+.app-title{font-size:18px; font-weight:800; letter-spacing:-.01em;}
+.app-title small{display:block; font-weight:400; font-size:11.5px; color:#C7CEEC; margin-top:1px;}
+.route-chip{font-size:11px; font-weight:600; background:rgba(255,255,255,.14); border:1px solid rgba(255,255,255,.22);
+  padding:5px 10px; border-radius:999px; white-space:nowrap;}
+.progress-row{display:flex; align-items:center; gap:10px;}
+.progress-text{font-size:12.5px; color:#D6DBF2; white-space:nowrap;}
+.progress-bar{flex:1; height:5px; background:rgba(255,255,255,.18); border-radius:3px; overflow:hidden;}
+.progress-fill{height:100%; background:var(--accent); border-radius:3px;}
+
+/* ===== TODAY FLOATING BUTTON ===== */
+.today-btn{
+  position:fixed; left:50%; transform:translateX(-50%); bottom:74px; z-index:70;
+  background:var(--accent); color:#fff; border:none; border-radius:999px;
+  padding:10px 20px; font-size:13.5px; font-weight:700; box-shadow:0 6px 18px rgba(240,112,63,.4);
+  display:flex; align-items:center; gap:7px; white-space:nowrap; max-width:92vw; overflow:hidden;
+  transition:.2s;
+}
+.today-btn.subtle{
+  background:var(--surface); color:var(--muted); border:1px solid var(--line);
+  box-shadow:var(--shadow-sm); font-weight:600; padding:8px 16px; font-size:12.5px;
+}
+.today-btn span.dot{width:7px; height:7px; border-radius:50%; background:#fff; flex:0 0 auto;}
+.today-btn.subtle span.dot{background:var(--muted-2);}
+.today-btn span.label{overflow:hidden; text-overflow:ellipsis;}
+
+/* ===== SECTION / SCREEN ===== */
+.screen{display:none; padding:18px 0 20px;}
+.screen.active{display:block;}
+.screen-head{margin-bottom:14px;}
+.screen-head h2{font-size:19px;}
+.screen-head p{font-size:12.5px; color:var(--muted); margin-top:3px;}
+
+/* ===== MAP ===== */
+.map-card{border-radius:var(--radius); overflow:hidden; border:1px solid var(--line); box-shadow:var(--shadow-sm); margin-bottom:14px;}
+#map{height:180px; width:100%; direction:ltr;}
+
+/* ===== TIMELINE ===== */
+.timeline-strip{display:flex; overflow-x:auto; gap:6px; padding:2px 2px 12px; margin-bottom:4px;}
+.tl-chip{flex:0 0 auto; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:8px 12px; cursor:pointer; min-width:84px;}
+.tl-chip.today-marker{border-color:var(--accent); background:var(--accent-tint);}
+.tl-chip .tl-name{font-size:12px; font-weight:700; white-space:nowrap;}
+.tl-chip .tl-date{font-size:10.5px; color:var(--muted); white-space:nowrap;}
+.tl-chip.lantern{border-color:var(--warning);}
+
+/* ===== ROUTE DECISION ===== */
+.decision-card{background:var(--primary-tint); border:1.5px solid var(--primary); border-radius:var(--radius); padding:18px; margin:16px 0;}
+.decision-card.compact{padding:12px 16px; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;}
+.decision-card.compact .dc-summary{font-size:12.5px; color:var(--primary-dark); font-weight:600;}
+.decision-card.compact .dc-summary small{display:block; font-weight:400; color:var(--muted); font-size:11px; margin-top:2px;}
+.decision-card .dk{font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--primary); margin-bottom:6px;}
+.decision-card h3{font-size:16.5px; margin-bottom:8px;}
+.decision-card p.dsub{font-size:12.5px; color:var(--muted); margin-bottom:14px;}
+.decision-options{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+@media (max-width:520px){.decision-options{grid-template-columns:1fr;}}
+.decision-opt{background:var(--surface); border:1.5px solid var(--line); border-radius:var(--radius-sm); padding:13px 14px;}
+.decision-opt.is-active{border-color:var(--success); box-shadow:0 0 0 3px var(--success-tint);}
+.decision-opt .do-label{font-size:10.5px; font-weight:700; color:var(--muted); text-transform:uppercase; margin-bottom:4px;}
+.decision-opt.is-active .do-label{color:var(--success);}
+.decision-opt h4{font-size:14px; margin-bottom:6px;}
+.decision-opt ul{margin:0 0 10px; padding-right:16px; font-size:12px; color:var(--muted);}
+.decision-opt li{margin-bottom:2px;}
+.decision-opt button{width:100%; border-radius:999px; padding:9px; font-size:12.5px; font-weight:700; border:none;}
+.decision-opt.is-active button{background:var(--success-tint); color:var(--success);}
+.decision-opt:not(.is-active) button{background:var(--primary); color:#fff;}
+
+/* ===== DESTINATION CARD ===== */
+.dest-card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+  margin-bottom:12px; box-shadow:var(--shadow-sm);}
+.dest-hero{height:108px; position:relative; overflow:hidden; background:var(--primary-dark);}
+.dest-hero img{width:100%; height:100%; object-fit:cover; display:block;}
+.dest-hero .hero-overlay{position:absolute; inset:0; background:linear-gradient(180deg, rgba(27,33,56,.15) 0%, rgba(27,33,56,.15) 40%, rgba(27,33,56,.78) 100%);
+  display:flex; flex-direction:column; justify-content:flex-end; padding:10px 14px;}
+.dest-hero .hero-icon{position:absolute; top:9px; left:11px; font-size:16px; opacity:.9; background:rgba(255,255,255,.2);
+  width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px);}
+.dest-hero .hero-name{font-size:17px; font-weight:800; color:#fff; text-shadow:0 1px 3px rgba(0,0,0,.35);}
+.dest-hero .lock-badge{position:absolute; top:9px; right:11px; font-size:13px; background:rgba(255,255,255,.2); width:24px; height:24px;
+  border-radius:7px; display:flex; align-items:center; justify-content:center;}
+.dest-top{padding:11px 14px 4px; display:flex; justify-content:space-between; align-items:flex-start; gap:10px; cursor:pointer;}
+.dest-meta{font-size:12px; color:var(--muted);}
+.dest-meta b{color:var(--ink); font-weight:600;}
+.vibe-row{display:flex; flex-wrap:wrap; gap:5px; padding:6px 14px 0;}
+.vibe-tag{font-size:10.5px; font-weight:600; padding:3px 9px; border-radius:999px; background:var(--sky-tint); color:#2C7A9E;}
+.highlight-row{padding:9px 14px 4px; font-size:12px; color:var(--muted);}
+.highlight-row span{display:block; padding:2px 0;}
+.weather-line{padding:4px 14px 8px; font-size:11.5px; color:var(--muted-2);}
+.dest-transfer-preview{padding:0 14px 10px; font-size:11.5px; color:var(--muted);}
+.expand-toggle{width:100%; text-align:center; padding:8px; background:var(--surface-2); border:none; border-top:1px solid var(--line);
+  font-size:12px; font-weight:600; color:var(--primary);}
+
+/* URGENCY CHIP */
+.urgency-chip{display:inline-flex; align-items:center; gap:5px; font-size:10.5px; font-weight:700; padding:4px 9px;
+  border-radius:999px; white-space:nowrap;}
+.urgency-chip.u-green{background:var(--success-tint); color:var(--success);}
+.urgency-chip.u-yellow{background:var(--warning-tint); color:#8a6a1d;}
+.urgency-chip.u-red{background:var(--danger-tint); color:var(--danger);}
+.urgency-chip.u-booked{background:var(--surface-2); color:var(--muted-2);}
+.urgency-chip.u-none{display:none;}
+
+/* EXPANDED CONTENT */
+.dest-body{display:none; padding:4px 14px 16px; border-top:1px solid var(--line);}
+.dest-body.open{display:block;}
+.db-section{margin-top:14px;}
+.db-section h5{font-size:11px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:7px; font-weight:700;}
+.db-section p{font-size:13px; color:#3A4159; margin:0;}
+.plan-day{display:flex; gap:10px; padding:6px 0; font-size:12.5px;}
+.plan-day b{flex:0 0 52px; color:var(--primary);}
+.check-list{list-style:none; margin:0; padding:0;}
+.check-list li{display:flex; align-items:flex-start; gap:9px; padding:6px 0; font-size:13px; border-top:1px dashed var(--line);}
+.check-list li:first-child{border-top:none;}
+.check-list input{margin-top:3px; width:16px; height:16px; accent-color:var(--success); flex:0 0 auto; cursor:pointer;}
+.check-list li.done span{text-decoration:line-through; color:var(--muted-2);}
+.plain-bullets{list-style:none; margin:0; padding:0;}
+.plain-bullets li{font-size:12.5px; padding:4px 0; color:#3A4159;}
+.plain-bullets li:before{content:"–"; margin-left:6px; color:var(--muted-2);}
+.tip-box{background:var(--sky-tint); border-radius:var(--radius-sm); padding:10px 12px; font-size:12px; color:#215169; margin-top:6px;}
+.tip-box:not(:first-child){margin-top:6px;}
+.weather-box{background:var(--warning-tint); border-radius:var(--radius-sm); padding:10px 12px; font-size:12.5px; color:#6b5116;}
+.transfer-box{background:var(--surface-2); border-radius:var(--radius-sm); padding:11px 13px; font-size:12.5px;}
+.transfer-box.big-warning{background:var(--danger-tint); color:#7a2b25;}
+.notes-area{width:100%; min-height:60px; border:1px solid var(--line); border-radius:var(--radius-sm); padding:9px 11px;
+  font-family:'Rubik',sans-serif; font-size:12.5px; resize:vertical; background:#FCFCFE;}
+.booking-row{display:flex; align-items:center; justify-content:space-between; gap:10px; background:var(--surface-2);
+  border-radius:var(--radius-sm); padding:10px 12px; font-size:12.5px; margin-top:6px;}
+.booking-row label{display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:600;}
+.booking-row input{width:16px; height:16px; accent-color:var(--success);}
+
+/* EDIT PANEL */
+.edit-panel{display:none; background:var(--surface-2); border-radius:var(--radius-sm); padding:12px; margin-top:10px;}
+.edit-panel.open{display:block;}
+.edit-row{display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap;}
+.edit-row label{font-size:11px; color:var(--muted); display:block; margin-bottom:3px;}
+.edit-row input[type=date],.edit-row input[type=number],.edit-row input[type=text]{
+  border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-family:'Rubik',sans-serif; font-size:12.5px; width:100%;}
+.edit-actions{display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;}
+
+.btn{border:none; border-radius:999px; padding:9px 16px; font-size:12.5px; font-weight:700;}
+.btn-primary{background:var(--primary); color:#fff;}
+.btn-outline{background:var(--surface); color:var(--primary); border:1px solid var(--primary);}
+.btn-danger{background:var(--danger-tint); color:var(--danger);}
+.btn-ghost{background:transparent; color:var(--muted); text-decoration:underline; padding:6px 4px;}
+
+.conflict-banner{background:var(--danger-tint); border:1px solid var(--danger); color:#7a2b25; border-radius:var(--radius-sm);
+  padding:11px 13px; font-size:12.5px; margin-bottom:14px;}
+
+.add-dest-card{border:1.5px dashed var(--muted-2); border-radius:var(--radius); padding:14px; text-align:center; margin-bottom:14px;}
+.add-dest-card button{background:none; border:none; color:var(--primary); font-weight:700; font-size:13px;}
+
+/* ===== TASKS ===== */
+.filter-row{display:flex; gap:8px; margin-bottom:14px;}
+.filter-btn{background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:7px 14px; font-size:12.5px; font-weight:600; color:var(--muted);}
+.filter-btn.active{background:var(--primary); color:#fff; border-color:var(--primary);}
+.task-item{display:flex; align-items:flex-start; gap:11px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--radius-sm); padding:12px 13px; margin-bottom:8px;}
+.task-item input{width:18px; height:18px; margin-top:2px; accent-color:var(--success); flex:0 0 auto; cursor:pointer;}
+.task-item .t-title{font-size:13.5px; font-weight:600;}
+.task-item.done .t-title{text-decoration:line-through; color:var(--muted-2);}
+.task-item .t-meta{font-size:11px; color:var(--muted); margin-top:2px;}
+.add-task-row{display:flex; gap:8px; margin-top:14px;}
+.add-task-row input{flex:1; border:1px solid var(--line); border-radius:999px; padding:9px 14px; font-size:13px; font-family:'Rubik',sans-serif;}
+.add-task-row button{border-radius:999px; padding:9px 16px; background:var(--primary); color:#fff; border:none; font-size:13px; font-weight:700;}
+.task-form-panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:13px; margin-top:8px;}
+.task-form-panel .edit-row{margin-bottom:9px;}
+.task-form-panel select{border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-family:'Rubik',sans-serif; font-size:12.5px; width:100%;}
+
+/* ===== JOURNAL ===== */
+.journal-dest-line{font-size:12px; color:var(--primary); font-weight:600; margin-bottom:8px;}
+.journal-editor{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:18px;}
+.journal-date-row{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+.journal-date-row input[type=date]{border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-family:'Rubik',sans-serif; font-size:13px;}
+.mood-row{display:flex; gap:8px; margin-bottom:10px;}
+.mood-btn{flex:1; background:var(--surface-2); border:1.5px solid transparent; border-radius:var(--radius-sm); padding:9px 4px;
+  text-align:center; font-size:11px; cursor:pointer;}
+.mood-btn .me{display:block; font-size:20px; margin-bottom:2px;}
+.mood-btn.selected{border-color:var(--primary); background:var(--primary-tint);}
+.journal-editor textarea{width:100%; min-height:90px; border:1px solid var(--line); border-radius:var(--radius-sm);
+  padding:10px 12px; font-family:'Rubik',sans-serif; font-size:13.5px; resize:vertical;}
+.journal-entry{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:11px 13px; margin-bottom:8px;}
+.journal-entry .je-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;}
+.journal-entry .je-date{font-size:12px; font-weight:700;}
+.journal-entry .je-mood{font-size:16px;}
+.journal-entry .je-text{font-size:12.5px; color:#3A4159; white-space:pre-wrap; cursor:pointer;}
+.journal-entry .je-actions{display:flex; gap:12px; margin-top:8px;}
+.journal-entry .je-actions button{background:none; border:none; font-size:11px; color:var(--muted); text-decoration:underline; padding:0;}
+.journal-entry .je-actions button.je-delete{color:var(--danger);}
+.journal-empty{font-size:12.5px; color:var(--muted); text-align:center; padding:20px 0;}
+
+/* ===== MORE ===== */
+.more-item{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-sm); padding:14px 15px;
+  margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; gap:10px;}
+.more-item h4{font-size:13.5px;}
+.more-item p{font-size:11.5px; color:var(--muted); margin-top:2px;}
+.more-item .mi-arrow{color:var(--muted-2); font-size:16px;}
+.info-block{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-bottom:14px;}
+.info-block h4{font-size:13.5px; margin-bottom:8px;}
+.info-block .ib-row{font-size:12.5px; padding:6px 0; border-top:1px dashed var(--line); color:#3A4159;}
+.info-block .ib-row:first-child{border-top:none;}
+.info-block .ib-row b{display:block; font-size:10.5px; text-transform:uppercase; color:var(--muted); margin-bottom:2px;}
+
+/* ===== BOTTOM NAV ===== */
+.bottom-nav{position:fixed; bottom:0; right:0; left:0; background:var(--surface); border-top:1px solid var(--line);
+  display:flex; z-index:80; padding-bottom:env(safe-area-inset-bottom);}
+.bottom-nav button{flex:1; display:flex; flex-direction:column; align-items:center; gap:2px; padding:9px 4px 7px;
+  background:none; border:none; color:var(--muted-2); font-size:10.5px; font-weight:600;}
+.bottom-nav button .bn-icon{font-size:19px;}
+.bottom-nav button.active{color:var(--primary);}
+
+@media (min-width:760px){
+  .wrap{max-width:640px;}
+}
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="wrap">
+    <div class="app-title-row">
+      <div class="app-title">Waypoint <small>Daniel & Liran · 2.10–30.11.26</small></div>
+      <span class="route-chip" id="routeChip">מסלול: סינגפור</span>
+    </div>
+    <div class="progress-row">
+      <span class="progress-text" id="progressText">יום 1 מתוך 59</span>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:2%"></div></div>
+    </div>
+  </div>
+</header>
+
+<button class="today-btn" id="todayBtn"><span class="dot"></span><span class="label" id="todayBtnLabel">טוען...</span></button>
+
+<main class="wrap">
+
+  <!-- TRIP SCREEN -->
+  <section class="screen active" id="screen-trip">
+    <div id="conflictBanner"></div>
+    <div class="map-card"><div id="map"></div></div>
+    <div class="timeline-strip" id="timelineStrip"></div>
+    <div id="destList"></div>
+    <div class="add-dest-card"><button onclick="openAddDestForm()">+ הוספת יעד</button><div id="addDestForm"></div></div>
+  </section>
+
+  <!-- TASKS SCREEN -->
+  <section class="screen" id="screen-tasks">
+    <div class="screen-head"><h2>משימות</h2><p>נשמר אוטומטית במכשיר הזה.</p></div>
+    <div class="filter-row" id="taskFilters">
+      <button class="filter-btn active" data-f="before" onclick="setTaskFilter('before')">לפני הטיול</button>
+      <button class="filter-btn" data-f="upcoming" onclick="setTaskFilter('upcoming')">בקרוב</button>
+      <button class="filter-btn" data-f="all" onclick="setTaskFilter('all')">הכל</button>
+    </div>
+    <div id="taskListEl"></div>
+    <div id="addTaskForm">
+      <button class="btn btn-outline" style="width:100%; margin-top:6px;" onclick="openTaskForm()">+ הוספת משימה</button>
+    </div>
+  </section>
+
+  <!-- JOURNAL SCREEN -->
+  <section class="screen" id="screen-journal">
+    <div class="screen-head"><h2>יומן מסע</h2><p>רשומה אישית לכל יום, נשמרת במכשיר הזה.</p></div>
+    <div class="journal-editor">
+      <div class="journal-date-row">
+        <input type="date" id="journalDate" onchange="loadJournalForDate(this.value)">
+        <button class="btn btn-primary" onclick="saveJournalEntry()">שמירה</button>
+      </div>
+      <div class="journal-dest-line" id="journalDestLine"></div>
+      <div class="mood-row" id="moodRow"></div>
+      <textarea id="journalText" placeholder="איך היה היום..."></textarea>
+    </div>
+    <div id="journalList"></div>
+  </section>
+
+  <!-- MORE SCREEN -->
+  <section class="screen" id="screen-more">
+    <div class="screen-head"><h2>עוד</h2></div>
+    <div class="info-block">
+      <h4>פרטי הטיול</h4>
+      <div class="ib-row"><b>תאריכים</b>2 באוקטובר – 30 בנובמבר 2026</div>
+      <div class="ib-row"><b>נוסעים</b>Daniel & Liran</div>
+      <div class="ib-row"><b>סה"כ</b>59 לילות · 60 ימי לוח</div>
+      <div class="ib-row"><b>התחלה וסיום</b>בנגקוק ← בנגקוק</div>
+    </div>
+    <div class="more-item" onclick="document.getElementById('screen-more-map').scrollIntoView({behavior:'smooth'})">
+      <div><h4>מפת המסלול המלאה</h4><p>גרסה גדולה ואינטראקטיבית</p></div><span class="mi-arrow">↓</span>
+    </div>
+    <div class="map-card" id="screen-more-map" style="height:320px;"><div id="map2" style="height:320px;"></div></div>
+    <div class="info-block" id="beforeTripBlock"></div>
+    <div class="more-item" onclick="openTripWallet()">
+      <div><h4>Asia Trip Wallet</h4><p>מעקב הוצאות — אפליקציה נפרדת</p></div>
+      <span class="mi-arrow">↗</span>
+    </div>
+  </section>
+
+</main>
+
+<nav class="bottom-nav" id="bottomNav">
+  <button class="active" data-screen="trip" onclick="showScreen('trip')">
+    <span class="bn-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg></span>Trip</button>
+  <button data-screen="tasks" onclick="showScreen('tasks')">
+    <span class="bn-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg></span>Tasks</button>
+  <button data-screen="journal" onclick="showScreen('journal')">
+    <span class="bn-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span>Journal</button>
+  <button data-screen="more" onclick="showScreen('more')">
+    <span class="bn-icon"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="1.6"></circle><circle cx="12" cy="12" r="1.6"></circle><circle cx="19" cy="12" r="1.6"></circle></svg></span>More</button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+/* ============================================================
+   WAYPOINT — Daniel & Liran Asia Trip
+   Single-file app. State persisted in real localStorage.
+   ============================================================ */
+
+const STORAGE_KEY = 'waypointTripState_v1';
+const TODAY_OVERRIDE = null; // set to 'YYYY-MM-DD' string for testing, else null uses real device date
+
+function getToday(){ return TODAY_OVERRIDE ? new Date(TODAY_OVERRIDE) : new Date(); }
+function iso(d){ return d.toISOString().slice(0,10); }
+function addDays(dateStr, n){ const d = new Date(dateStr+'T00:00:00'); d.setDate(d.getDate()+n); return iso(d); }
+function daysBetween(a,b){ return Math.round((new Date(b+'T00:00:00') - new Date(a+'T00:00:00')) / 86400000); }
+function fmtDate(dstr){
+  const d = new Date(dstr+'T00:00:00');
+  const months = ['ינו','פבר','מרץ','אפר','מאי','יוני','יולי','אוג','ספט','אוק','נוב','דצמ'];
+  return `${d.getDate()} ${months[d.getMonth()]}`;
+}
+
+/* ---------------- DESTINATION CONTENT (shared across routes) ---------------- */
+const DEST_CONTENT = {
+  bkkarrival:{ name:'בנגקוק · נחיתה', icon:'✈️', vibes:['City'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Bangkok_skyline,_Bangkok,_Thailand.jpg?width=700',
+    overview:'נחיתה מאוחרת וחניית לילה אחת ליד השדה — בלי תוכניות, רק התאוששות לפני הטיסה הפנימית הראשונה.',
+    plan:[{day:'יום 1', text:'נחיתה, הגעה למלון, שינה.'}],
+    must:['מלון ליד השדה עם צ\'ק-אין מאוחר'], more:[], skip:[],
+    tips:['לבחור מלון עם שאטל שדה חינם מאחר שהנחיתה מאוחרת.'],
+    weatherShort:'—', weatherLong:'—',
+    booking:{key:'bkkhotel', label:'מלון ליד השדה', yellow:14, red:5}},
+
+  hanoi:{ name:'האנוי', icon:'🍜', vibes:['City','Food'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Old_Quarter_street_scene,_Hanoi_(11)_(38464616512).jpg?width=700',
+    overview:'טעימה קצרה מהבירה לפני הצפון — אנרגיית הרובע העתיק, אוכל רחוב וחיי שוק. לא מעגל מקדשים.',
+    plan:[{day:'יום 1', text:'הגעה, הליכה ברובע העתיק, ארוחת ערב ראשונה.'},
+          {day:'יום 2', text:'שווקים ובתי קפה, הכנה להא ג\'יאנג.'},
+          {day:'יום 3', text:'יום גמיש/מעבר — סליפר לילה להא ג\'יאנג.'}],
+    must:['סיור אוכל רחוב ברובע העתיק (פו, בון צ\'ה, קפה ביצה)','אגם הואן קיאם בשקיעה','שוק לילה בסופ"ש','חוויית בישול/אוכל אחת מיוחדת'],
+    more:['Train Street (עצירת צילום בלבד, לפי גישה מותרת)','בר גג לנוף על העיר','טיילת ורחובות סביב אגם המערבי (West Lake)','קפה ביצה במקום קלאסי ברובע','שוק Dong Xuan לקניות וטעימות','ערב בירה רחוב (Bia Hoi Corner)'],
+    skip:['מעגל מקדשים מלא — לבחור לכל היותר אחד, רק אם בא לכם'],
+    tips:['מזומן עדיין המלך בשווקים ובדוכני רחוב — כדאי שטרות קטנים.','חציית כביש דורשת עצבים — הליכה יציבה וצפויה.','להזמין את הסליפר להא ג\'יאנג כמה ימים מראש.'],
+    weatherShort:'תחילת עונה יבשה, נעים', weatherLong:'תחילת העונה היבשה — חם ונעים, טוב מאוד להליכה בעיר.',
+    booking:null},
+
+  hagiang:{ name:'הא ג\'יאנג לופ', icon:'🏍️', vibes:['Nature'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Ha_Giang_Loop.jpg?width=700',
+    overview:'הלולאה ההררית היא החוויה עם יחס התמורה הכי גבוה בצפון וייטנאם — נופים דרמטיים כנוסע מאחורי נהג מקומי, לא כטרק.',
+    plan:[{day:'יום 1', text:'הגעה + תחילת הלולאה.'},{day:'יום 2', text:'יום מלא בלולאה — מא פי לנג, כפרים.'},{day:'יום 3', text:'סיום הלולאה + חזרה.'}],
+    must:['רכיבה כנוסע עם Easy Rider (לא נהיגה עצמית)','מעבר Ma Pi Leng','נהר Nho Que','ארוחה ביתית בכפר'],
+    more:['מגדל הדגל בלונג קו','שווקים מקומיים אם התזמון מתאים (שוק סוף שבוע בדונג ואן)','נקודת תצפית "ההר התאום" (Nui Doi Quan Ba)','עצירת קפה בכפר על אם הדרך','תצפית נוספת בדרך למאו ואק'],
+    skip:['הליכות רגליות ארוכות — הנוף מהכביש כבר השיא'],
+    tips:['להזמין Easy Rider כמה ימים מראש ולבדוק ביקורות — איכות הקבוצה משתנה מאוד.','לקחת שכבת גשם קלה גם בעונה יבשה.','להביא מזומן — כספומטים נדירים לאורך הלולאה.'],
+    weatherShort:'יבש ונעים, עונת השיא', weatherLong:'עונה יבשה בהרי הצפון — זו עונת השיא ללולאה, שמיים בהירים סביר יותר מגשם.',
+    booking:{key:'easyrider', label:'הזמנת Easy Rider', yellow:14, red:5}},
+
+  sapa:{ name:'סאפה', icon:'🌄', vibes:['Nature','Relaxation'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Rice_terraces_in_Sa_Pa_03.jpg?width=700',
+    overview:'טרסות אורז ואוויר הררי, בקצב איטי — רכבל ועוד הליכה קצרה נותנים את הנוף בלי טרק רציני.',
+    plan:[{day:'יום 1', text:'הגעה, נוף מהעיר.'},{day:'יום 2', text:'רכבל פאנסיפן או הליכה קצרה לכפר.'},{day:'ימים 3-5', text:'קצב חופשי — קפה, נוף, מנוחה.'}],
+    must:['רכבל Fansipan','הליכה קצרה לכפר Cat Cat או Ta Van','ארוחה עם נוף להרים'],
+    more:['שוק מקומי','עיסוי/ספא אחרי הא ג\'יאנג','מפל הכסף (Silver Waterfall) — יציאה קצרה מהעיר','בית קפה עם נוף לעמק לאורך שעה-שעתיים','סיור קצר בין כמה כפרי מיעוטים אתניים','שוק בק הא הצבעוני אם הזמן מתאים (ימי ראשון בלבד)'],
+    skip:['טרק רב-יומי — לא נדרש בשביל הנוף כאן'],
+    tips:['לקחת שכבה חמה לערבים — קריר בגובה.','תור לרכבל מתארך בצהריים — כדאי מוקדם או מאוחר.','מזג האוויר יכול להשתנות מהר — להשאיר יום גמיש לרכבל.'],
+    weatherShort:'קריר, ייתכן ערפל', weatherLong:'קריר ולעיתים מעונן — שווה לשמור על גמישות ביום הרכבל למקרה של עננות נמוכה.',
+    booking:null},
+
+  ninhbinh:{ name:'נין בין / טאם קוק', icon:'🚣', vibes:['Nature','Relaxation'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Vietnam,_Ninh_Binh,_Trang_An_Limestone_Peaks.jpg?width=700',
+    overview:'צוקי גיר ושדות אורז משיט — "הא לונג ביי היבשתי", רגוע ולא דורש מאמץ.',
+    plan:[{day:'יום 1', text:'שיט (Trang An או Tam Coc — לא שניהם) + רכיבה קלה.'},{day:'יום 2', text:'בריכה/מנוחה, אופציה למערת תצפית.'}],
+    must:['שיט Trang An או Tam Coc (לבחור אחד)','רכיבת אופניים קלה בין השדות'],
+    more:['תצפית Hang Mua (מדרגות רבות — רק אם בא לכם)','שמורת ציפורים Thung Nham','פגודת Bai Dinh — קומפלקס גדול, טיול חצי יום','ערב בבית קפה/בר רגוע באזור','ביקור בכפרי אורז נוספים ברכיבה חופשית'],
+    skip:['לעשות גם Trang An וגם Tam Coc — דומים מדי'],
+    tips:['ללון באזור טאם קוק הכפרי, לא במרכז העיר נין בין.','זו נקודת ההחלטה של המסלול — ראו את הכרטיס למטה לפני שממשיכים.'],
+    weatherShort:'יבש ונעים', weatherLong:'עדיין עונה יבשה, נעים ובהיר לרוב.',
+    booking:null},
+
+  puluong:{ name:'Pù Luông', icon:'🌾', vibes:['Nature','Relaxation'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Pu_Luong_01.JPG?width=700',
+    overview:'עמק טרסות שקט ופחות מתויר — נקודת הרפייה אמיתית, האלטרנטיבה לזמן נוסף בוייטנאם.',
+    plan:[{day:'יום 1', text:'הגעה, נוף עמק.'},{day:'יום 2', text:'רכיבת אופניים/הליכה קלה, נהר.'},{day:'יום 3', text:'יום בריכה/ערסל, בלי תוכנית.'}],
+    must:['תצפית עמק','רכיבת אופניים קלה בין הטרסות','אחה"צ רגוע ליד הנהר'],
+    more:['קיאקים בנהר אם הלודג\' מציע','טחנות מים במבוק מסורתיות בכפרים','ארוחת ערב ביתית עם המארחים'],
+    skip:['כל דבר שמתואר כ"טרק" — זה נועד להיות הקטע הכי לא-מתוכנן בטיול'],
+    tips:['מעט כספומטים — להביא מזומן מנין בין.','לינה כאן היא בעיקר אקו-לודג\'/הומסטיי — להזמין מראש בעונת השיא.'],
+    weatherShort:'יבש ונעים', weatherLong:'דומה לנין בין — יבש ונעים.',
+    booking:{key:'puluonglodge', label:'לינה ב-Pù Luông', yellow:21, red:7}},
+
+  halong:{ name:'הא לונג / לאן הא ביי', icon:'⛵', vibes:['Nature','Beach'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Ha_Long_Bay,_Vietnam,_View_from_above.jpg?width=700',
+    overview:'קרוז המפרץ המפורסם — סירה ברמה בינונית-טובה, לא הזולה ביותר.',
+    plan:[{day:'יום 1', text:'עלייה לסירה, קיאקים, שקיעה מהסיפון.'},{day:'יום 2', text:'עצירת מערה, ירידה מהסירה.'}],
+    must:['קרוז לילה במפרץ לאן הא (שקט יותר מהא לונג הקלאסי)','קיאקים בין צוקי הגיר','שקיעה מהסיפון'],
+    more:['עצירת מערה','שחייה אם מזג האוויר מאפשר','ביקור בכפר דייגים צף','שיעור בישול ויאטנמי קצר על הסיפון (אם מוצע)'],
+    skip:['לילה קרוז שני — אחד מספיק'],
+    tips:['לבחור סירה עם תא זוגי פרטי ברמה טובה.','הפעילויות תלויות מזג אוויר — לשמור גמישות אם אפשר.'],
+    weatherShort:'רגוע, אחרי עונת הטייפונים', weatherLong:'ים בדרך כלל רגוע בתקופה הזו, אחרי שיא עונת הטייפונים.',
+    booking:{key:'lanha', label:'קרוז Lan Ha Bay', yellow:14, red:5}},
+
+  hoian:{ name:'הוי אן + דה נאנג', icon:'🏮', vibes:['City','Food','Culture'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Lanterns_in_Hoi_An_4.jpg?width=700',
+    overview:'העיר העתיקה בלילה היא השיא — כאן נמצא פסטיבל הפנסים שסביבו נבנה חלק מהמסלול.',
+    plan:[{day:'יום 1', text:'הגעה, טעימה ראשונה מהעיר העתיקה.'},{day:'ימים 2-3', text:'עיר עתיקה ביום ובלילה, אוכל, ליל הפסטיבל.'},{day:'ימים 4+', text:'חוף An Bang, דה נאנג, ימים רגועים.'}],
+    must:['העיר העתיקה בלילה — במיוחד ליל הפסטיבל','חוף An Bang ליום ים אמיתי','ערב אוכל רחוב (banh mi, cao lau)','שיט פנסים על הנהר'],
+    more:['יום בדה נאנג (Marble Mountains, גשר הדרקון)','Ba Na Hills / Golden Bridge','קורס בישול','רכיבת אופניים בין שדות האורז מסביב לעיר','שוק בוקר מקומי (Hoi An Market)','בית קפה על גדת הנהר בשעות אחה"צ','חנויות תפירה מהירה (Custom tailoring) אם בא לכם משהו מקומי'],
+    skip:['My Son אם מקדשים לא ממש מעניינים — לוותר בלי חרטה'],
+    tips:['אוקטובר הוא שיא עונת הגשמים באזור — לעיר יש היסטוריה אמיתית של שיטפונות, לעקוב אחר תחזית.','ליל הפסטיבל (23.10) 🔒 נהיה עמוס — כדאי להגיע מוקדם בערב.','חוף An Bang הוא האלטרנטיבה הרגועה כשהעיר העתיקה עמוסה מדי.'],
+    weatherShort:'שיא עונת הגשמים באזור', weatherLong:'הקטע הכי גשום בטיול — סביר להניח שיהיה גשם בחלק מהימים. לשמור על תוכניות חוץ גמישות ולתת עדיפות לאוכל/פנים כגיבוי.',
+    booking:{key:'hoianlodging', label:'לינה לליל הפסטיבל (23.10)', yellow:45, red:20}},
+
+  singapore:{ name:'סינגפור', icon:'🎢', vibes:['City','Food','Nightlife'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Marina-Bay-Sands.jpg?width=700',
+    overview:'הפסקת עיר ופארק שעשועים בין וייטנאם לאיים — קצב שונה לגמרי, אוכל מצוין ויום פארק אמיתי.',
+    plan:[{day:'יום 1', text:'הגעה, אזור Marina Bay.'},{day:'יום 2', text:'Universal Studios — יום מלא.'},{day:'יום 3', text:'סיור הוקרים + Gardens by the Bay.'},{day:'יום 4', text:'שכונה לבחירה (Chinatown / Little India / Kampong Glam).'},{day:'יום 5', text:'יום גמיש, קניות אחרונות, יציאה לחיי לילה.'}],
+    must:['Universal Studios Singapore — יום מלא','Gardens by the Bay + קו הרקיע של Marina Bay בלילה','סיור הוקרים (Maxwell / Lau Pa Sat)','ערב אחד בחוץ'],
+    more:['חוף/טיילת בסנטוסה','שכונה אחת לעומק (Chinatown / Little India / Kampong Glam)','Night Safari','שוק לילה או רחוב אוכל בטיונג ברו','תצפית מ-Marina Bay Sands SkyPark','קניות ב-Orchard Road','סיפון/שיט קצר בנהר סינגפור בערב'],
+    skip:['לנסות "לעשות" כל שכונה — לבחור 2-3 ולהעמיק'],
+    tips:['סינגפור יקרה משמעותית מוייטנאם/תאילנד — לתקצב בהתאם.','לקנות כרטיסי Universal Studios מראש — תורים ארוכים בסופ"ש.','מי הברז ראויים לשתייה; האוכל בהוקרים מעולה וזול יחסית.'],
+    weatherShort:'טרופי כל השנה, ממטרים קצרים', weatherLong:'טרופי כל השנה — חם ולח עם ממטרים עזים וקצרים אחה"צ. אין "עונה גרועה" ממש, פשוט לתכנן סביב הממטרים.',
+    booking:{key:'universal', label:'כרטיסי Universal Studios', yellow:30, red:10}},
+
+  samui:{ name:'קו סמוי', icon:'🏝️', vibes:['Beach','Relaxation','Food'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Koh_Samui,_Island,_Beach,_Thailand.jpg?width=700',
+    overview:'האי הכי מסודר מבין השלושה — בסיס טוב להיכנס לקצב האיים.',
+    plan:[{day:'ימים 1-2', text:'התאקלמות, חוף.'},{day:'יום 3', text:'סיור אי / אופציונלי לוותר.'},{day:'ימים 4+', text:'חוף, אוכל, חיי לילה לפי בחירה, בלי תוכנית קבועה.'}],
+    must:['חוף Chaweng או Lamai','שוק הלילה של Fisherman\'s Village (ימי שישי)','ארוחת פירות ים על החוף'],
+    more:['סיור סירה ל-Ang Thong Marine Park (תלוי ים)','מפל בפנים האי (Na Muang)','עיסוי זוגי על החוף','טיול קצר לגן הבודהה הסודי','ערב בר על החוף ב-Chaweng','שוק לילה נוסף ב-Lamai'],
+    skip:['מעגל מקדשים/הבודהה הגדול — עצירת תמונה בלבד אם בכלל'],
+    tips:['עונת הגשמים באיי המפרץ — ממטרים אפשריים, לא להזמין כל יום חוץ מראש.','חיי הלילה כאן רגועים יחסית לעומת קו פנגן שמחכה בהמשך.'],
+    weatherShort:'עונת גשמים באיי המפרץ', weatherLong:'החלק הרטוב יותר בשנה באיי המפרץ — ייתכנו ימים גשומים שלמים. לתכנן ימי חוף בגמישות.',
+    booking:null},
+
+  kohtao:{ name:'קו טאו', icon:'🤿', vibes:['Beach','Nature'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Nang_Yuan_Island,_Koh_Tao_(48109132156).jpg?width=700',
+    overview:'אי הצלילה והשנורקלינג — שקט, איטי, בנוי סביב המים.',
+    plan:[{day:'ימים 1-2', text:'התאקלמות, שנורקלינג/צלילת היכרות.'},{day:'ימים 3-4', text:'קורס צלילה או שנורקלינג מסביב לאי.'},{day:'יום 5', text:'גיבוי/מנוחה.'}],
+    must:['שנורקלינג או קורס צלילה (Discover Scuba / Open Water)','תצפית Koh Nang Yuan','שקיעה בחוף Sairee'],
+    more:['שנורקלינג ב-Shark Bay','שנירקול לילה עם פלנקטון זוהר, אם מוצע','יוגה בוקר על החוף','טיפוס לתצפית John-Suwan','ארוחת ערב על החוף עם מדורה'],
+    skip:['לשלב קורס צלילה מלא וגם המון אי-הופינג — לבחור פוקוס אחד'],
+    tips:['סקולות צלילה מציעות לרוב לינה זולה/חינם למי שעושה קורס.','מעבורות עלולות להתבטל בים סוער — כדאי מרווח לפני המשך הדרך.'],
+    weatherShort:'דפוס גשם דומה, מתגבר בהמשך נובמבר', weatherLong:'דומה לסמוי — גשם אפשרי, נוטה להתגבר ככל שמתקדמים בנובמבר.',
+    booking:{key:'divecourse', label:'קורס צלילה (אופציונלי)', yellow:14, red:5}},
+
+  phangan:{ name:'קו פנגן', icon:'🌙', vibes:['Beach','Nightlife','Nature'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Koh_Phangan,_Haad_Rin_Sunrise_Beach_(6218403786).jpg?width=700',
+    overview:'אי החיי לילה והטבע גם יחד — המסיבות המפורסמות, אבל גם חופים שקטים לגמרי אם זה מה שבא לכם.',
+    plan:[{day:'ימים 1-2', text:'חופים שקטים בצפון.'},{day:'ימים 3-4', text:'תזוזה לכיוון האד רין אם מסתדר ערב מסיבה, אחרת עוד חוף.'}],
+    must:['חוף שקט בצפון (Bottle Beach או דומה)','ארוחת חוף תאית טובה','ערב אחד בחוץ — Full/Half Moon אם מסתדר, אחרת האד רין הרגיל'],
+    more:['הליכה קצרה למפל Phaeng','יום יוגה/וולנס','ביקור בכפר הדייגים צ\'לוקלום','שוק הלילה של תונג סאלה (ימי ראשון)','שייט קצר לאי הסמוך Koh Ma','עיסוי על חוף שקט אחה"צ'],
+    skip:['לאלץ ליל מסיבה אם שום תאריך לא מסתדר — האי שווה גם בלי זה'],
+    tips:['לבדוק לוחות מסיבות ברגע שנוחתים — התאריכים המדויקים לא נקבעים חודשים מראש.','אם מסתדר ליל מסיבה, לינה קרוב להאד רין מתייקרת מהר — להזמין מוקדם.'],
+    weatherShort:'לרוב הכי גשום מבין שלושת האיים', weatherLong:'לרוב הנקודה הכי רטובה מבין שלושת האיים בחלון הזה — לשמור על תוכניות רופפות.',
+    booking:null},
+
+  phuket:{ name:'פוקט', icon:'🏖️', vibes:['Beach','City','Food'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Karon_Beach,_Phuket.jpg?width=700',
+    overview:'הבסיס הכי מפותח בטיול — תשתית טובה, אוכל מעולה, טיולי יום נוחים.',
+    plan:[{day:'ימים 1-2', text:'חוף קאטה/קארון.'},{day:'יום 3', text:'שיט Phang Nga Bay.'},{day:'יום 4', text:'פוקט טאון + אוכל, ערב פטונג אופציונלי.'},{day:'יום 5', text:'גיבוי/מנוחה.'}],
+    must:['שיט Phang Nga Bay (כולל James Bond Island)','בסיס בחוף קאטה או קארון','סיור אוכל בפוקט טאון'],
+    more:['מקלט פילים אחראי (ללא רכיבה)','ערב אחד בפטונג/בנגלה רואד','ATV או שיט קיאקים במערות ים','חוף קטן ושקט יותר כמו Freedom Beach','שוק לילה סוף שבוע (Chillva Market)','עיסוי תאי מסורתי אחה"צ','קניון מקורה ליום גשום (Central Phuket)'],
+    skip:['ללון בפטונג עצמה — לבסס בקאטה/קארון ולבקר בפטונג רק לערב'],
+    tips:['אפליקציות הסעה עובדות טוב כאן — אין צורך במיקוח מתמיד.','תחילת העונה היבשה בחוף האנדמן — סיכוי טוב משמעותית ממה שהיה באיים.'],
+    weatherShort:'תחילת עונה יבשה', weatherLong:'חוף האנדמן נכנס לעונה היבשה — משמעותית טוב יותר ממה שחוויתם באיי המפרץ.',
+    booking:null},
+
+  krabi:{ name:'קראבי', icon:'🪨', vibes:['Beach','Nature','Relaxation'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Railay_Beach_at_Sunrise.jpg?width=700',
+    overview:'התחנה הארוכה והשקטה ביותר בטיול — חופי ריילי ונוף הגיר בלי צורך לטפס על שום דבר.',
+    plan:[{day:'ימים 1-2', text:'התאקלמות באו נאנג.'},{day:'יום 3', text:'יום חוף ריילי (כניסה בסירה).'},{day:'יום 4', text:'שיט לאיי Hong.'},{day:'ימים 5+', text:'בלי תוכנית — חוף, אוכל, עיסוי, חזרה על זה.'}],
+    must:['חוף ריילי / Phra Nang (כניסה בסירה, בלי לטפס לתצפית)','שיט לאיי Hong','שקיעה מסירת longtail'],
+    more:['בריכת אזמרגד / מעיינות חמים','קיאקים במנגרובים','טעימת טיפוס סלעים למתחילים אם בא לכם','שוק לילה או נאנג','ערב עם מופע אש על החוף','עיסוי תאי על שורת בתי ספא לאורך הטיילת','יום שני בים עם ציוד שנורקלינג עצמאי'],
+    skip:['כמה טיולי שיט גדולים — Hong Islands מספיק, בלי לכפול','התצפית התלולה בריילי'],
+    tips:['או נאנג נוחה לגישה, ריילי עצמה בסיס שקט יותר.','זה קטע ההרפיה הגדול — לא לתכנן כל יום, זה בכוונה.'],
+    weatherShort:'עונה יבשה בשיאה', weatherLong:'קרוב לחלון מזג האוויר הכי טוב בכל הטיול — יבש ובהיר לרוב.',
+    booking:{key:'krabistay', label:'לינה לשהות הארוכה', yellow:21, red:7}},
+
+  bangkokfinal:{ name:'בנגקוק · סיום', icon:'🛍️', vibes:['City','Food','Nightlife'],
+    photo:'https://commons.wikimedia.org/wiki/Special:FilePath/Bangkok_skyline,_Bangkok,_Thailand.jpg?width=700',
+    overview:'נחיתה רכה לפני הטיסה — אוכל, קניות וערב אחד טוב לפני הבית.',
+    plan:[{day:'ימים 1-2', text:'התמקמות, קניונים/שווקים.'},{day:'יום 3', text:'סיור אוכל + עיסוי, ערב אחרון.'},{day:'יום 4', text:'בוקר קליל, אריזה, טיסה 15:30.'}],
+    must:['סיור אוכל אחרון (רובע סיני/Yaowarat או שוק)','ערב אחד בבר גג','קניות אחרונות (MBK / Terminal 21)'],
+    more:['שיט ארוחת ערב בנהר','עוד עיסוי אחד','שוק סוף שבוע צ\'טוצ\'אק אם התאריך מתאים','ארוחה במסעדת סטריט פוד מדורגת מישלן','טיילת ICONSIAM על הנהר בערב'],
+    skip:['לדחוס עוד יום תיירות מלא — זו תחנת נחיתה, לא עוד יעד'],
+    tips:['לצאת מהמלון 4-4.5 שעות לפני ההמראה ב-15:30.','לוודא שה-TDAC הוגש לכניסה האחרונה.'],
+    weatherShort:'עונה יבשה, נוח', weatherLong:'עונה יבשה — נוח יחסית להליכה בעיר.',
+    booking:null},
+};
+
+/* ---------------- ROUTE SEGMENTS ---------------- */
+const SHARED_PREFIX = [
+  {id:'bkkarrival', key:'bkkarrival', start:'2026-10-02', end:'2026-10-03',
+   transfer:{to:'האנוי', method:'טיסה', duration:'~2 שעות', timing:'כבר מוזמן', complexity:'low'}},
+  {id:'hanoi', key:'hanoi', start:'2026-10-03', end:'2026-10-06',
+   transfer:{to:'הא ג\'יאנג', method:'סליפר VIP (לילה)', duration:'~6-7 שעות', timing:'להזמין כמה ימים מראש', complexity:'low'}},
+  {id:'hagiang', key:'hagiang', start:'2026-10-06', end:'2026-10-09',
+   transfer:{to:'סאפה', method:'ואן/מיניבוס', duration:'~4-5 שעות', timing:'—', complexity:'low'}},
+  {id:'sapa', key:'sapa', start:'2026-10-09', end:'2026-10-14',
+   transfer:{to:'נין בין', method:'ואן/אוטובוס', duration:'~5-6 שעות', timing:'—', complexity:'low'}},
+  {id:'ninhbinh', key:'ninhbinh', start:'2026-10-14', end:'2026-10-16',
+   transfer:{to:'ראו נקודת ההחלטה', method:'', duration:'', timing:'', complexity:'low'}, isDecisionPoint:true},
+];
+
+const ROUTES = {
+  singapore: [
+    ...SHARED_PREFIX,
+    {id:'halong', key:'halong', start:'2026-10-16', end:'2026-10-18',
+     transfer:{to:'הוי אן', method:'טיסה (דרך דה נאנג)', duration:'~2 שעות טיסה', timing:'—', complexity:'low'}},
+    {id:'hoian', key:'hoian', start:'2026-10-18', end:'2026-10-24', lock:true,
+     transfer:{to:'סינגפור', method:'טיסה', duration:'~3 שעות, ככל הנראה חיבור', timing:'—', complexity:'medium'}},
+    {id:'singapore', key:'singapore', start:'2026-10-24', end:'2026-10-29',
+     transfer:{to:'קו סמוי', method:'טיסה (ככל הנראה דרך בנגקוק)', duration:'~3-4 שעות', timing:'—', complexity:'medium'}},
+    {id:'samui', key:'samui', start:'2026-10-29', end:'2026-11-04',
+     transfer:{to:'קו טאו', method:'פרומה', duration:'~1.5-2 שעות', timing:'—', complexity:'low'}},
+    {id:'kohtao', key:'kohtao', start:'2026-11-04', end:'2026-11-09',
+     transfer:{to:'קו פנגן', method:'פרומה', duration:'~30-45 דקות', timing:'—', complexity:'low'}},
+    {id:'phangan', key:'phangan', start:'2026-11-09', end:'2026-11-13',
+     transfer:{to:'פוקט', method:'פרומה + טיסה (דרך קו סמוי/סוראט טהאני)', duration:'יום שלם, סביר', timing:'—', complexity:'high'}},
+    {id:'phuket', key:'phuket', start:'2026-11-13', end:'2026-11-18',
+     transfer:{to:'קראבי', method:'ואן/פרומה', duration:'~3-4 שעות', timing:'—', complexity:'low'}},
+    {id:'krabi', key:'krabi', start:'2026-11-18', end:'2026-11-26',
+     transfer:{to:'בנגקוק', method:'טיסה', duration:'~1.5 שעות', timing:'—', complexity:'low'}},
+    {id:'bangkokfinal', key:'bangkokfinal', start:'2026-11-26', end:'2026-11-30', lock:true,
+     transfer:{to:'טיסה הביתה', method:'ארקיע, 15:30', duration:'—', timing:'לצאת 4-4.5 שעות מראש', complexity:'low'}},
+  ],
+  nosingapore: [
+    ...SHARED_PREFIX,
+    {id:'puluong', key:'puluong', start:'2026-10-16', end:'2026-10-19',
+     transfer:{to:'הא לונג / לאן הא ביי', method:'ואן', duration:'~3-4 שעות', timing:'—', complexity:'low'}},
+    {id:'halong', key:'halong', start:'2026-10-19', end:'2026-10-21',
+     transfer:{to:'הוי אן', method:'טיסה (דרך דה נאנג)', duration:'~2 שעות טיסה', timing:'—', complexity:'low'}},
+    {id:'hoian', key:'hoian', start:'2026-10-21', end:'2026-10-26', lock:true,
+     transfer:{to:'קו סמוי', method:'טיסה (ככל הנראה דרך בנגקוק)', duration:'~4-5 שעות', timing:'—', complexity:'medium'}},
+    {id:'samui', key:'samui', start:'2026-10-26', end:'2026-11-01',
+     transfer:{to:'קו טאו', method:'פרומה', duration:'~1.5-2 שעות', timing:'—', complexity:'low'}},
+    {id:'kohtao', key:'kohtao', start:'2026-11-01', end:'2026-11-06',
+     transfer:{to:'קו פנגן', method:'פרומה', duration:'~30-45 דקות', timing:'—', complexity:'low'}},
+    {id:'phangan', key:'phangan', start:'2026-11-06', end:'2026-11-10',
+     transfer:{to:'פוקט', method:'פרומה + טיסה (דרך קו סמוי/סוראט טהאני)', duration:'יום שלם, סביר', timing:'—', complexity:'high'}},
+    {id:'phuket', key:'phuket', start:'2026-11-10', end:'2026-11-15',
+     transfer:{to:'קראבי', method:'ואן/פרומה', duration:'~3-4 שעות', timing:'—', complexity:'low'}},
+    {id:'krabi', key:'krabi', start:'2026-11-15', end:'2026-11-26',
+     transfer:{to:'בנגקוק', method:'טיסה', duration:'~1.5 שעות', timing:'—', complexity:'low'}},
+    {id:'bangkokfinal', key:'bangkokfinal', start:'2026-11-26', end:'2026-11-30', lock:true,
+     transfer:{to:'טיסה הביתה', method:'ארקיע, 15:30', duration:'—', timing:'לצאת 4-4.5 שעות מראש', complexity:'low'}},
+  ],
+};
+
+const TRIP_START = '2026-10-02';
+const TRIP_END = '2026-11-30';          // last calendar day of the trip (departure day)
+const TRIP_TOTAL_NIGHTS = daysBetween(TRIP_START, TRIP_END);      // 59 nights
+const TRIP_TOTAL_DAYS = TRIP_TOTAL_NIGHTS + 1;                     // 60 calendar days, incl. departure day
+const TRIP_WALLET_URL = 'https://trip-buget.vercel.app';
+
+/* ---------------- SEEDED TASKS ---------------- */
+const SEED_TASKS = [
+  {id:'t1', title:'ויזה לוייטנאם (evisa.gov.vn)', due:'2026-09-15', dest:'hanoi'},
+  {id:'t2', title:'ביטוח נסיעות', due:'2026-09-20', dest:null},
+  {id:'t3', title:'eSIM / SIM לוייטנאם ותאילנד', due:'2026-09-25', dest:null},
+  {id:'t4', title:'הזמנת Ha Giang Easy Rider', due:'2026-09-22', dest:'hagiang'},
+  {id:'t5', title:'הזמנת קרוז Lan Ha', due:'2026-10-01', dest:'halong'},
+  {id:'t6', title:'לינה בהוי אן לליל הפסטיבל (23.10)', due:'2026-09-05', dest:'hoian'},
+  {id:'t7', title:'תכנון Universal Studios סינגפור', due:'2026-09-24', dest:'singapore'},
+  {id:'t8', title:'תכנון מעבורות בין האיים בתאילנד', due:'2026-10-20', dest:'samui'},
+  {id:'t9', title:'טיסות אזוריות עיקריות', due:'2026-09-10', dest:null},
+  {id:'t10', title:'TDAC לתאילנד — עד 72 שעות לפני כל כניסה', due:'2026-10-01', dest:null},
+];
+
+/* ---------------- MOODS ---------------- */
+const MOODS = [
+  {id:'amazing', label:'מדהים', emoji:'🤩'},
+  {id:'good', label:'טוב', emoji:'🙂'},
+  {id:'okay', label:'בסדר', emoji:'😐'},
+  {id:'rough', label:'יום קשה', emoji:'😕'},
+];
+
+/* ============================================================
+   STATE
+   ============================================================ */
+function defaultState(){
+  return {
+    activeRoute: 'singapore',
+    overrides: {},        // { destId: {start,end} }
+    customDestinations: [],  // [{id,key:'custom',name,start,end,note,vibes:[]}]
+    removedIds: [],
+    activityDone: {},      // { 'destId:must:0': true }
+    bookingDone: {},       // { bookingKey: true }
+    tasks: {},             // { taskId: true } for seeded done-state
+    customTasks: [],       // [{id,title,due,dest,done}]
+    journal: {},           // { 'YYYY-MM-DD': {text, mood} }
+    notes: {},             // { destId: 'free text' }
+  };
+}
+let state = loadState();
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if(!raw) return defaultState();
+    const parsed = JSON.parse(raw);
+    return Object.assign(defaultState(), parsed);
+  }catch(e){ return defaultState(); }
+}
+function saveState(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){ console.warn('Could not save state', e); }
+}
+
+/* Build the active, effective list of destinations (route + overrides + custom + removed) */
+function getActiveSegments(){
+  const base = ROUTES[state.activeRoute].map(s => ({...s}));
+  base.forEach(s => { if(state.overrides[s.id]) Object.assign(s, state.overrides[s.id]); });
+  const filtered = base.filter(s => !state.removedIds.includes(s.id));
+  const custom = state.customDestinations.filter(c => !state.removedIds.includes(c.id));
+  const all = [...filtered, ...custom].sort((a,b)=> a.start.localeCompare(b.start));
+  return all;
+}
+function contentFor(seg){
+  if(seg.key === 'custom') return {
+    name:seg.name, icon:seg.icon||'📍', photo:null, vibes:seg.vibes||[], overview:seg.note||'יעד מותאם אישית שהוספתם.',
+    plan:[], must:[], more:[], skip:[], tips:[], weatherShort:'—', weatherLong:'—', booking:null
+  };
+  return DEST_CONTENT[seg.key];
+}
+
+/* ============================================================
+   BOOKING URGENCY — returns a readable chip descriptor, not just a color
+   ============================================================ */
+function urgencyForSeg(seg){
+  const c = contentFor(seg);
+  if(!c.booking) return null;
+  if(state.bookingDone[c.booking.key]) return {level:'booked', text:`Booked ✓ · ${c.booking.label}`};
+  const today = iso(getToday());
+  const daysOut = daysBetween(today, seg.start);
+  if(daysOut < 0) return {level:'booked', text:`${c.booking.label}`};
+  if(daysOut <= c.booking.red) return {level:'red', text:`להזמין לפני ההגעה · ${c.booking.label}`};
+  if(daysOut <= c.booking.yellow) return {level:'yellow', text:`כדאי להזמין בקרוב · ${c.booking.label}`};
+  return {level:'green', text:`אפשר לחכות · ${c.booking.label}`};
+}
+function urgencyChipHtml(seg, compact){
+  const u = urgencyForSeg(seg);
+  if(!u) return '';
+  const cls = u.level==='booked' ? 'u-booked' : (u.level==='red'?'u-red':u.level==='yellow'?'u-yellow':'u-green');
+  const label = compact ? (u.level==='booked'?'Booked ✓':u.level==='red'?'להזמין לפני הגעה':u.level==='yellow'?'כדאי להזמין':'אפשר לחכות') : u.text;
+  return `<span class="urgency-chip ${cls}">${label}</span>`;
+}
+
+/* ============================================================
+   CONFLICT DETECTION
+   ============================================================ */
+function findConflicts(){
+  const segs = getActiveSegments();
+  const conflicts = [];
+  for(let i=0;i<segs.length-1;i++){
+    const gap = daysBetween(segs[i].end, segs[i+1].start);
+    if(gap > 0) conflicts.push(`פער של ${gap} ${gap===1?'יום':'ימים'} בין ${contentFor(segs[i]).name} ל-${contentFor(segs[i+1]).name}`);
+    else if(gap < 0) conflicts.push(`חפיפה של ${Math.abs(gap)} ${Math.abs(gap)===1?'יום':'ימים'} בין ${contentFor(segs[i]).name} ל-${contentFor(segs[i+1]).name}`);
+  }
+  return conflicts;
+}
+
+/* ============================================================
+   RENDER: HEADER / PROGRESS / TODAY BUTTON
+   ============================================================ */
+function renderHeaderAndToday(){
+  document.getElementById('routeChip').textContent = 'מסלול: ' + (state.activeRoute==='singapore' ? 'סינגפור' : 'ללא סינגפור');
+  const today = iso(getToday());
+  const dayNum = Math.max(1, Math.min(TRIP_TOTAL_DAYS, daysBetween(TRIP_START, today)+1));
+  const displayDay = today < TRIP_START ? 0 : (today > TRIP_END ? TRIP_TOTAL_DAYS : dayNum);
+  document.getElementById('progressText').textContent = `יום ${displayDay} מתוך ${TRIP_TOTAL_DAYS}`;
+  const pct = today < TRIP_START ? 0 : today > TRIP_END ? 100 : Math.round(dayNum/TRIP_TOTAL_DAYS*100);
+  document.getElementById('progressFill').style.width = pct+'%';
+
+  const btn = document.getElementById('todayBtnLabel');
+  const btnEl = document.getElementById('todayBtn');
+  const segs = getActiveSegments();
+  if(today < TRIP_START){
+    const d = daysBetween(today, TRIP_START);
+    btn.textContent = `הטיול מתחיל בעוד ${d} ${d===1?'יום':'ימים'}`;
+    window.__todayDestId = null;
+    btnEl.classList.add('subtle');
+  } else if(today === TRIP_END){
+    // final day: departure from Bangkok — still an active, meaningful state
+    const finalSeg = segs.find(s => s.id === 'bangkokfinal') || segs[segs.length-1];
+    btn.textContent = `Today · טיסה הביתה 15:30`;
+    window.__todayDestId = finalSeg ? finalSeg.id : null;
+    btnEl.classList.remove('subtle');
+  } else if(today > TRIP_END){
+    btn.textContent = 'הטיול הסתיים ✓';
+    window.__todayDestId = null;
+    btnEl.classList.add('subtle');
+  } else {
+    const current = segs.find(s => today >= s.start && today < s.end);
+    if(current){
+      btn.textContent = `Today · ${contentFor(current).name}`;
+      window.__todayDestId = current.id;
+    } else {
+      btn.textContent = 'Today · במעבר';
+      window.__todayDestId = null;
+    }
+    btnEl.classList.remove('subtle');
+  }
+}
+function jumpToToday(){
+  if(window.__todayDestId){
+    showScreen('trip');
+    setTimeout(()=>{
+      const el = document.getElementById('card-'+window.__todayDestId);
+      if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+    }, 50);
+  }
+}
+document.getElementById('todayBtn').addEventListener('click', jumpToToday);
+
+/* ============================================================
+   RENDER: CONFLICT BANNER
+   ============================================================ */
+function renderConflictBanner(){
+  const conflicts = findConflicts();
+  const el = document.getElementById('conflictBanner');
+  if(conflicts.length===0){ el.innerHTML=''; return; }
+  el.innerHTML = `<div class="conflict-banner"><b>⚠ נמצאו בעיות בלוח הזמנים:</b><br>${conflicts.join('<br>')}</div>`;
+}
+
+/* ============================================================
+   RENDER: MAP
+   ============================================================ */
+let mapInstance = null, mapInstance2 = null, mapLayer = null, mapLayer2 = null;
+const COORDS = {
+  bkkarrival:[13.69,100.75], hanoi:[21.0278,105.8342], hagiang:[22.8025,104.9784], sapa:[22.3364,103.8438],
+  ninhbinh:[20.25,105.93], halong:[20.85,107.05], puluong:[20.4167,105.15], hoian:[15.8801,108.338],
+  singapore:[1.3521,103.8198], samui:[9.512,99.9628], kohtao:[10.0956,99.8402], phangan:[9.7333,100.0333],
+  phuket:[7.9,98.32], krabi:[8.03,98.83], bangkokfinal:[13.79,100.53],
+};
+function coordsFor(seg){ return seg.coords || COORDS[seg.key] || [13.7,100.5]; }
+
+function initMaps(){
+  mapInstance = L.map('map', {zoomControl:false, attributionControl:false, scrollWheelZoom:false, dragging:false, touchZoom:false, doubleClickZoom:false}).setView([13,105], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(mapInstance);
+  mapInstance2 = L.map('map2', {zoomControl:true, attributionControl:true, scrollWheelZoom:true}).setView([13,105], 4);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18}).addTo(mapInstance2);
+}
+function renderMaps(){
+  [ [mapInstance,'l1'], [mapInstance2,'l2'] ].forEach(([map,tag])=>{
+    if(!map) return;
+    if(map.__layerGroup) map.removeLayer(map.__layerGroup);
+    const segs = getActiveSegments();
+    const group = L.layerGroup().addTo(map);
+    const latlngs = segs.map(coordsFor);
+    L.polyline(latlngs, {color:'#33417A', weight:2, dashArray:'4,6', opacity:.6}).addTo(group);
+    segs.forEach(seg=>{
+      const c = contentFor(seg);
+      const markerColor = seg.lock ? '#F0703F' : '#33417A';
+      const marker = L.circleMarker(coordsFor(seg), {radius:6, color:'#fff', weight:2, fillColor:markerColor, fillOpacity:1}).addTo(group);
+      marker.bindPopup(`<b>${c.name}</b><br>${fmtDate(seg.start)}–${fmtDate(addDays(seg.end,-1))}`);
+      marker.on('click', ()=>{ showScreen('trip'); setTimeout(()=>{ const el=document.getElementById('card-'+seg.id); if(el) el.scrollIntoView({behavior:'smooth',block:'center'}); }, 60); });
+    });
+    map.__layerGroup = group;
+    if(latlngs.length) map.fitBounds(L.latLngBounds(latlngs), {padding:[20,20]});
+  });
+}
+
+/* ============================================================
+   RENDER: TIMELINE
+   ============================================================ */
+function renderTimeline(){
+  const segs = getActiveSegments();
+  const today = iso(getToday());
+  document.getElementById('timelineStrip').innerHTML = segs.map(seg=>{
+    const c = contentFor(seg);
+    const isToday = today >= seg.start && today < seg.end;
+    const isLantern = seg.key==='hoian';
+    return `<div class="tl-chip ${isToday?'today-marker':''} ${isLantern?'lantern':''}" onclick="document.getElementById('card-${seg.id}').scrollIntoView({behavior:'smooth',block:'center'})">
+      <div class="tl-name">${c.icon} ${c.name}</div>
+      <div class="tl-date">${fmtDate(seg.start)}</div>
+    </div>`;
+  }).join('');
+}
+
+/* ============================================================
+   RENDER: DESTINATION LIST + ROUTE DECISION
+   ============================================================ */
+window.__openCards = window.__openCards || {};
+
+function destCardHtml(seg){
+  const c = contentFor(seg);
+  const nights = daysBetween(seg.start, seg.end);
+  const lastNight = addDays(seg.end, -1);   // the actual final night spent here (end is exclusive checkout)
+  const isOpen = !!window.__openCards[seg.id];
+  const highlights = (c.must||[]).slice(0,3);
+  const doneCount = (c.must||[]).filter((_,i)=>state.activityDone[seg.id+':must:'+i]).length +
+                     (c.more||[]).filter((_,i)=>state.activityDone[seg.id+':more:'+i]).length;
+  const totalCount = (c.must||[]).length + (c.more||[]).length;
+
+  const planHtml = (c.plan||[]).map(p=>`<div class="plan-day"><b>${p.day}</b><span>${p.text}</span></div>`).join('');
+  const mustHtml = (c.must||[]).map((m,i)=>{
+    const key = seg.id+':must:'+i; const done = !!state.activityDone[key];
+    return `<li class="${done?'done':''}"><input type="checkbox" ${done?'checked':''} onchange="toggleActivity('${key}', this.checked)"><span>${m}</span></li>`;
+  }).join('');
+  const moreHtml = (c.more||[]).map((m,i)=>{
+    const key = seg.id+':more:'+i; const done = !!state.activityDone[key];
+    return `<li class="${done?'done':''}"><input type="checkbox" ${done?'checked':''} onchange="toggleActivity('${key}', this.checked)"><span>${m}</span></li>`;
+  }).join('');
+  const skipHtml = (c.skip||[]).map(s=>`<li>${s}</li>`).join('');
+  const tipsHtml = (c.tips||[]).map(t=>`<div class="tip-box">${t}</div>`).join('');
+
+  const bookingHtml = c.booking ? `<div class="booking-row">
+      <label><input type="checkbox" ${state.bookingDone[c.booking.key]?'checked':''} onchange="toggleBooking('${c.booking.key}', this.checked)"> ${c.booking.label} — Booked</label>
+      ${urgencyChipHtml(seg,false)}
+    </div>` : (seg.transferNote ? '' : '');
+
+  const transferBig = seg.transfer && seg.transfer.complexity==='high';
+  const transferHtml = seg.transfer ? `<div class="transfer-box ${transferBig?'big-warning':''}">
+      <b>${c.name} → ${seg.transfer.to}</b><br>
+      ${seg.transfer.method}${seg.transfer.duration && seg.transfer.duration!=='—' ? ' · '+seg.transfer.duration : ''}
+      ${seg.transfer.timing && seg.transfer.timing!=='—' ? `<br>${seg.transfer.timing}` : ''}
+      <br><span style="color:var(--muted);">יציאה/checkout: ${fmtDate(seg.end)}</span>
+      ${transferBig ? '<br><b>⚠ מעבר מורכב — לתכנן יום מלא</b>' : ''}
+    </div>` : (seg.transferNote ? `<div class="transfer-box">${seg.transferNote}<br><span style="color:var(--muted);">יציאה/checkout: ${fmtDate(seg.end)}</span></div>` : '');
+
+  const noteVal = state.notes[seg.id] || '';
+  const isCustom = seg.key === 'custom';
+  const heroBg = c.photo
+    ? `<img src="${c.photo}" alt="${c.name}" loading="lazy" onerror="this.style.display='none'; this.parentElement.style.background='var(--primary-dark)';">`
+    : '';
+
+  return `
+  <div class="dest-card" id="card-${seg.id}">
+    <div class="dest-hero">
+      ${heroBg}
+      <div class="hero-overlay">
+        ${seg.lock ? '<span class="lock-badge">🔒</span>' : ''}
+        <span class="hero-icon">${c.icon}</span>
+        <span class="hero-name">${c.name}</span>
+      </div>
+    </div>
+    <div class="dest-top" onclick="toggleCard('${seg.id}')">
+      <div class="dest-meta"><b>${fmtDate(seg.start)}–${fmtDate(lastNight)}</b> · ${nights} ${nights===1?'לילה':'לילות'}</div>
+      ${urgencyChipHtml(seg, true)}
+    </div>
+    <div class="vibe-row">${(c.vibes||[]).map(v=>`<span class="vibe-tag">${v}</span>`).join('')}</div>
+    ${highlights.length ? `<div class="highlight-row">${highlights.map(h=>`<span>• ${h}</span>`).join('')}</div>` : ''}
+    ${c.weatherShort && c.weatherShort!=='—' ? `<div class="weather-line">☁︎ ${c.weatherShort}</div>` : ''}
+    ${seg.transfer ? `<div class="dest-transfer-preview">→ ${seg.transfer.to} · ${seg.transfer.method}</div>` : (seg.transferNote ? `<div class="dest-transfer-preview">→ ${seg.transferNote}</div>` : '')}
+    <button class="expand-toggle" onclick="toggleCard('${seg.id}')">${isOpen?'סגירה':`פרטים מלאים${totalCount?` (${doneCount}/${totalCount})`:''}`}</button>
+    <div class="dest-body ${isOpen?'open':''}" id="body-${seg.id}">
+      <div class="db-section"><h5>למה זה כאן</h5><p>${c.overview}</p></div>
+      ${planHtml ? `<div class="db-section"><h5>תוכנית מומלצת</h5>${planHtml}</div>` : ''}
+      ${mustHtml ? `<div class="db-section"><h5>חובה לעשות</h5><ul class="check-list">${mustHtml}</ul></div>` : ''}
+      ${moreHtml ? `<div class="db-section"><h5>עוד אופציות</h5><ul class="check-list">${moreHtml}</ul></div>` : ''}
+      ${skipHtml ? `<div class="db-section"><h5>לוותר קודם אם צריך לקצר</h5><ul class="plain-bullets">${skipHtml}</ul></div>` : ''}
+      ${tipsHtml ? `<div class="db-section"><h5>חשוב לדעת</h5>${tipsHtml}</div>` : ''}
+      ${c.weatherLong && c.weatherLong!=='—' ? `<div class="db-section"><h5>מזג אוויר</h5><div class="weather-box">${c.weatherLong}</div></div>` : ''}
+      ${(transferHtml) ? `<div class="db-section"><h5>המעבר הבא</h5>${transferHtml}</div>` : ''}
+      ${bookingHtml ? `<div class="db-section"><h5>הזמנה</h5>${bookingHtml}</div>` : ''}
+      <div class="db-section"><h5>הערות אישיות</h5><textarea class="notes-area" placeholder="הערות..." onchange="saveNote('${seg.id}', this.value)">${noteVal}</textarea></div>
+      <div class="db-section">
+        <button class="btn btn-ghost" onclick="toggleEditPanel('${seg.id}')">✎ עריכת תאריכים</button>
+        ${isCustom ? `<button class="btn btn-ghost" style="color:var(--danger);" onclick="removeDestination('${seg.id}')">✕ הסרת היעד</button>` : ''}
+        <div class="edit-panel" id="edit-${seg.id}">
+          <div class="edit-row">
+            <div style="flex:1;"><label>מגיע (check-in)</label><input type="date" id="edit-start-${seg.id}" value="${seg.start}"></div>
+            <div style="flex:1;"><label>עוזב (checkout)</label><input type="date" id="edit-end-${seg.id}" value="${seg.end}"></div>
+          </div>
+          <div class="edit-actions">
+            <button class="btn btn-primary" onclick="saveEdit('${seg.id}')">שמירה</button>
+            <button class="btn btn-outline" onclick="toggleEditPanel('${seg.id}')">ביטול</button>
+            ${!isCustom ? `<button class="btn btn-ghost" onclick="removeDestination('${seg.id}')">✕ הסרת יעד מהמסלול</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.__decisionExpanded = window.__decisionExpanded || false;
+window.toggleDecisionExpanded = function(){ window.__decisionExpanded = !window.__decisionExpanded; renderDestList(); };
+
+function routeDecisionHtml(){
+  const active = state.activeRoute;
+  if(!window.__decisionExpanded){
+    return `
+    <div class="decision-card compact" id="routeDecision" onclick="toggleDecisionExpanded()">
+      <div class="dc-summary">מסלול נוכחי: ${active==='singapore'?'סינגפור':'ללא סינגפור'}<small>קיימת אלטרנטיבה — הקישו להשוואה ולהחלפה</small></div>
+      <button class="btn btn-outline" style="pointer-events:none;">הצגה</button>
+    </div>`;
+  }
+  return `
+  <div class="decision-card" id="routeDecision">
+    <div class="dk">נקודת החלטה — 15 באוקטובר, נין בין</div>
+    <h3>להמשיך עם סינגפור, או לוותר לטובת עוד זמן בוייטנאם?</h3>
+    <p class="dsub">שני המסלולים מתכנסים בחזרה לאותה תחנת סיום. אפשר לעבור בין המסלולים בכל רגע — שום דבר לא נמחק.</p>
+    <div class="decision-options">
+      <div class="decision-opt ${active==='singapore'?'is-active':''}">
+        <div class="do-label">${active==='singapore'?'פעיל עכשיו':'אופציה 1'}</div>
+        <h4>המשך המסלול הראשי</h4>
+        <ul><li>Ha Long → Hoi An/Da Nang</li><li>סינגפור (כולל Universal Studios)</li><li>המשך לאיי תאילנד</li></ul>
+        <button onclick="setRoute('singapore')">${active==='singapore'?'המסלול הפעיל':'לחזור למסלול הזה'}</button>
+      </div>
+      <div class="decision-opt ${active==='nosingapore'?'is-active':''}">
+        <div class="do-label">${active==='nosingapore'?'פעיל עכשיו':'אופציה 2'}</div>
+        <h4>ויתור על סינגפור</h4>
+        <ul><li>Pù Luông — עמק שקט נוסף</li><li>עוד זמן בוייטנאם</li><li>הגעה מוקדמת יותר לתאילנד</li><li>לילות נוספים בקראבי (11 במקום 8)</li></ul>
+        <button onclick="setRoute('nosingapore')">${active==='nosingapore'?'המסלול הפעיל':'מעבר למסלול הזה'}</button>
+      </div>
+    </div>
+    <button class="btn btn-ghost" onclick="toggleDecisionExpanded()" style="margin-top:6px;">הקטנה</button>
+  </div>`;
+}
+
+function renderDestList(){
+  const segs = getActiveSegments();
+  let html = '';
+  segs.forEach(seg=>{
+    html += destCardHtml(seg);
+    if(seg.isDecisionPoint) html += routeDecisionHtml();
+  });
+  document.getElementById('destList').innerHTML = html;
+}
+
+function toggleCard(id){
+  window.__openCards[id] = !window.__openCards[id];
+  renderDestList();
+  if(window.__openCards[id]) setTimeout(()=>{ const el=document.getElementById('card-'+id); if(el) el.scrollIntoView({behavior:'smooth',block:'start'}); }, 30);
+}
+function toggleEditPanel(id){
+  const el = document.getElementById('edit-'+id);
+  if(el) el.classList.toggle('open');
+}
+window.toggleActivity = function(key, checked){
+  state.activityDone[key] = checked; saveState();
+  const [id] = key.split(':');
+  window.__openCards[id] = true;
+  renderDestList();
+};
+window.toggleBooking = function(key, checked){
+  state.bookingDone[key] = checked; saveState(); renderDestList();
+};
+window.saveNote = function(id, val){ state.notes[id] = val; saveState(); };
+
+window.saveEdit = function(id){
+  const start = document.getElementById('edit-start-'+id).value;
+  const end = document.getElementById('edit-end-'+id).value;
+  if(!start || !end || start>=end){ alert('טווח תאריכים לא תקין.'); return; }
+  const seg = getActiveSegments().find(s=>s.id===id);
+  if(seg && seg.key==='custom'){
+    const c = state.customDestinations.find(x=>x.id===id);
+    if(c){ c.start=start; c.end=end; }
+  } else {
+    state.overrides[id] = {start, end};
+  }
+  saveState();
+  window.__openCards[id] = true;
+  renderAll();
+};
+
+window.removeDestination = function(id){
+  if(!confirm('להסיר את היעד הזה מהמסלול?')) return;
+  const seg = getActiveSegments().find(s=>s.id===id);
+  if(seg && seg.key==='custom'){
+    state.customDestinations = state.customDestinations.filter(c=>c.id!==id);
+  } else {
+    if(!state.removedIds.includes(id)) state.removedIds.push(id);
+  }
+  saveState();
+  renderAll();
+};
+
+const VIBE_OPTIONS = ['Nature','Beach','Food','Nightlife','City','Relaxation'];
+function openAddDestForm(){
+  document.getElementById('addDestForm').innerHTML = `
+    <div class="edit-panel open" style="text-align:right; margin-top:12px;">
+      <div class="edit-row">
+        <div style="flex:2;"><label>שם היעד</label><input type="text" id="newDestName" placeholder="למשל: Pai"></div>
+        <div style="flex:1;"><label>אייקון (אופציונלי)</label><input type="text" id="newDestIcon" placeholder="📍" maxlength="2"></div>
+      </div>
+      <div class="edit-row">
+        <div style="flex:1;"><label>מגיע (check-in)</label><input type="date" id="newDestStart"></div>
+        <div style="flex:1;"><label>עוזב (checkout)</label><input type="date" id="newDestEnd"></div>
+      </div>
+      <div class="edit-row" style="display:block;">
+        <label>Vibe (אופציונלי)</label>
+        <div class="vibe-row" style="padding:0;">${VIBE_OPTIONS.map(v=>`<label class="vibe-tag" style="cursor:pointer;"><input type="checkbox" value="${v}" class="newDestVibe" style="margin-left:4px;">${v}</label>`).join('')}</div>
+      </div>
+      <div class="edit-row"><div style="flex:1;"><label>הערה אישית (אופציונלי)</label><input type="text" id="newDestNote"></div></div>
+      <div class="edit-row"><div style="flex:1;"><label>הערת תחבורה/מעבר הבא (אופציונלי)</label><input type="text" id="newDestTransport" placeholder="למשל: ואן ~3 שעות"></div></div>
+      <div class="edit-actions">
+        <button class="btn btn-primary" onclick="confirmAddDest()">הוספה</button>
+        <button class="btn btn-outline" onclick="document.getElementById('addDestForm').innerHTML=''">ביטול</button>
+      </div>
+    </div>`;
+}
+window.confirmAddDest = function(){
+  const name = document.getElementById('newDestName').value.trim();
+  const start = document.getElementById('newDestStart').value;
+  const end = document.getElementById('newDestEnd').value;
+  const note = document.getElementById('newDestNote').value.trim();
+  const icon = document.getElementById('newDestIcon').value.trim();
+  const transferNote = document.getElementById('newDestTransport').value.trim();
+  const vibes = [...document.querySelectorAll('.newDestVibe:checked')].map(el=>el.value);
+  if(!name || !start || !end || start>=end){ alert('נא למלא שם וטווח תאריכים תקין (עוזב אחרי מגיע).'); return; }
+  const id = 'custom_' + Date.now();
+  state.customDestinations.push({id, key:'custom', name, start, end, note, icon, transferNote, vibes});
+  saveState();
+  document.getElementById('addDestForm').innerHTML = '';
+  renderAll();
+};
+
+window.setRoute = function(route){
+  state.activeRoute = route;
+  saveState();
+  renderAll();
+};
+
+/* ============================================================
+   SCREENS
+   ============================================================ */
+window.showScreen = function(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('#bottomNav button').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+  window.scrollTo({top:0, behavior:'instant'});
+  if(name==='more' && mapInstance2) setTimeout(()=>mapInstance2.invalidateSize(), 80);
+};
+
+/* ============================================================
+   TASKS
+   ============================================================ */
+let taskFilter = 'before';
+window.setTaskFilter = function(f){
+  taskFilter = f;
+  document.querySelectorAll('#taskFilters .filter-btn').forEach(b=>b.classList.toggle('active', b.dataset.f===f));
+  renderTasks();
+};
+function allTasks(){
+  const custom = state.customTasks.map(t=>({...t, done: t.done}));
+  const seeded = SEED_TASKS.map(t=>({...t, done: !!state.tasks[t.id]}));
+  return [...seeded, ...custom];
+}
+function renderTasks(){
+  const today = iso(getToday());
+  let tasks = allTasks();
+  if(taskFilter==='before') tasks = tasks.filter(t=>t.due <= TRIP_START);
+  else if(taskFilter==='upcoming') tasks = tasks.filter(t=> !t.done && daysBetween(today, t.due) <= 14 && daysBetween(today, t.due) >= -3);
+  tasks.sort((a,b)=> a.due.localeCompare(b.due));
+  document.getElementById('taskListEl').innerHTML = tasks.length ? tasks.map(t=>{
+    let destName = '';
+    if(t.dest){
+      if(DEST_CONTENT[t.dest]) destName = DEST_CONTENT[t.dest].name;
+      else { const cd = state.customDestinations.find(c=>c.id===t.dest); if(cd) destName = cd.name; }
+    }
+    return `<div class="task-item ${t.done?'done':''}">
+      <input type="checkbox" ${t.done?'checked':''} onchange="toggleTaskDone('${t.id}', this.checked)">
+      <div><div class="t-title">${t.title}</div><div class="t-meta">יעד: ${fmtDate(t.due)}${destName?' · '+destName:''}</div></div>
+    </div>`;
+  }).join('') : `<div class="journal-empty">אין משימות בסינון הזה.</div>`;
+}
+window.toggleTaskDone = function(id, checked){
+  const custom = state.customTasks.find(t=>t.id===id);
+  if(custom){ custom.done = checked; }
+  else { state.tasks[id] = checked; }
+  saveState();
+  renderTasks();
+};
+function destOptionsHtml(selected){
+  const segs = getActiveSegments();
+  const seen = new Set();
+  let opts = `<option value="">ללא יעד ספציפי</option>`;
+  segs.forEach(s=>{
+    if(seen.has(s.key)) return; seen.add(s.key);
+    const c = contentFor(s);
+    opts += `<option value="${s.key==='custom'?s.id:s.key}" ${selected===(s.key==='custom'?s.id:s.key)?'selected':''}>${c.name}</option>`;
+  });
+  return opts;
+}
+window.openTaskForm = function(){
+  document.getElementById('addTaskForm').innerHTML = `
+    <div class="task-form-panel">
+      <div class="edit-row"><div style="flex:1;"><label>מה צריך לעשות</label><input type="text" id="newTaskTitle" placeholder="למשל: לחדש דרכון"></div></div>
+      <div class="edit-row">
+        <div style="flex:1;"><label>עד תאריך</label><input type="date" id="newTaskDue"></div>
+        <div style="flex:1;"><label>יעד קשור (אופציונלי)</label><select id="newTaskDest">${destOptionsHtml(null)}</select></div>
+      </div>
+      <div class="edit-actions">
+        <button class="btn btn-primary" onclick="confirmAddTask()">הוספה</button>
+        <button class="btn btn-outline" onclick="document.getElementById('addTaskForm').innerHTML='<button class=\\'btn btn-outline\\' style=\\'width:100%; margin-top:6px;\\' onclick=\\'openTaskForm()\\'>+ הוספת משימה</button>'">ביטול</button>
+      </div>
+    </div>`;
+  document.getElementById('newTaskTitle').focus();
+};
+window.confirmAddTask = function(){
+  const title = document.getElementById('newTaskTitle').value.trim();
+  const due = document.getElementById('newTaskDue').value || TRIP_START;
+  const dest = document.getElementById('newTaskDest').value || null;
+  if(!title){ alert('נא להזין כותרת למשימה.'); return; }
+  state.customTasks.push({id:'custom_'+Date.now(), title, due, dest, done:false});
+  saveState();
+  document.getElementById('addTaskForm').innerHTML = `<button class="btn btn-outline" style="width:100%; margin-top:6px;" onclick="openTaskForm()">+ הוספת משימה</button>`;
+  renderTasks();
+};
+
+/* ============================================================
+   JOURNAL
+   ============================================================ */
+let journalSelectedMood = null;
+function renderMoodRow(){
+  document.getElementById('moodRow').innerHTML = MOODS.map(m=>
+    `<button type="button" class="mood-btn ${journalSelectedMood===m.id?'selected':''}" onclick="selectMood('${m.id}')"><span class="me">${m.emoji}</span>${m.label}</button>`
+  ).join('');
+}
+window.selectMood = function(id){ journalSelectedMood = (journalSelectedMood===id) ? null : id; renderMoodRow(); };
+
+function destForDate(dateStr){
+  const segs = getActiveSegments();
+  const seg = segs.find(s => dateStr >= s.start && dateStr < s.end);
+  return seg ? contentFor(seg).name : null;
+}
+function loadJournalForDate(dateStr){
+  const entry = state.journal[dateStr];
+  document.getElementById('journalText').value = entry ? entry.text : '';
+  journalSelectedMood = entry ? entry.mood : null;
+  renderMoodRow();
+  const dn = destForDate(dateStr);
+  document.getElementById('journalDestLine').textContent = dn ? `📍 ${dn}` : '';
+}
+window.saveJournalEntry = function(){
+  const dateStr = document.getElementById('journalDate').value;
+  if(!dateStr) return;
+  const text = document.getElementById('journalText').value;
+  if(!text.trim() && !journalSelectedMood){ delete state.journal[dateStr]; }
+  else { state.journal[dateStr] = {text, mood: journalSelectedMood}; }
+  saveState();
+  renderJournalList();
+};
+window.deleteJournalEntry = function(d, ev){
+  if(ev) ev.stopPropagation();
+  if(!confirm('למחוק את הרשומה הזו מהיומן?')) return;
+  delete state.journal[d];
+  saveState();
+  renderJournalList();
+  if(document.getElementById('journalDate').value === d) loadJournalForDate(d);
+};
+function renderJournalList(){
+  const entries = Object.keys(state.journal).sort().reverse();
+  const el = document.getElementById('journalList');
+  if(!entries.length){ el.innerHTML = `<div class="journal-empty">עדיין אין רשומות. הראשונה שלכם תופיע כאן.</div>`; return; }
+  el.innerHTML = entries.map(d=>{
+    const e = state.journal[d];
+    const mood = MOODS.find(m=>m.id===e.mood);
+    const dn = destForDate(d);
+    return `<div class="journal-entry">
+      <div class="je-head"><span class="je-date">${fmtDate(d)}${dn?' · '+dn:''}</span><span class="je-mood">${mood?mood.emoji:''}</span></div>
+      <div class="je-text" onclick="editJournalDate('${d}')">${(e.text||'').slice(0,140)}${e.text && e.text.length>140?'…':''}</div>
+      <div class="je-actions"><button onclick="editJournalDate('${d}')">עריכה</button><button class="je-delete" onclick="deleteJournalEntry('${d}', event)">מחיקה</button></div>
+    </div>`;
+  }).join('');
+}
+window.editJournalDate = function(d){
+  document.getElementById('journalDate').value = d;
+  loadJournalForDate(d);
+  document.querySelector('.journal-editor').scrollIntoView({behavior:'smooth'});
+};
+
+/* ============================================================
+   MORE / BEFORE-TRIP INFO
+   ============================================================ */
+function renderBeforeTrip(){
+  document.getElementById('beforeTripBlock').innerHTML = `
+    <h4>לפני הטיול</h4>
+    <div class="ib-row"><b>ויזות</b>ויזה נדרשת לוייטנאם (E-visa) — לבדוק לפי הצורך לתאילנד וסינגפור בהתאם למסלול הפעיל.</div>
+    <div class="ib-row"><b>ביטוח</b>ביטוח נסיעות מומלץ, כולל כיסוי לרכיבת אופנוע (הא ג\'יאנג) וצלילה אם רלוונטי.</div>
+    <div class="ib-row"><b>TDAC</b>כרטיס הכניסה הדיגיטלי לתאילנד נדרש עד 72 שעות לפני כל כניסה — כולל כניסות חוזרות.</div>
+    <div class="ib-row"><b>עונות</b>וייטנאם צפון — יבש ונעים. הוי אן/מרכז — שיא עונת הגשמים. סינגפור — טרופי כל השנה. איי המפרץ (סמוי/טאו/פנגן) — עונה רטובה. אנדמן (פוקט/קראבי) — עונה יבשה.</div>`;
+}
+window.openTripWallet = function(){
+  window.location.href = TRIP_WALLET_URL;
+};
+
+/* ============================================================
+   MASTER RENDER
+   ============================================================ */
+function renderAll(){
+  renderHeaderAndToday();
+  renderConflictBanner();
+  renderTimeline();
+  renderDestList();
+  renderMaps();
+  renderTasks();
+  renderJournalList();
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
+document.addEventListener('DOMContentLoaded', ()=>{
+  initMaps();
+  renderBeforeTrip();
+  const todayIso = iso(getToday());
+  const journalDefault = (todayIso >= TRIP_START && todayIso <= TRIP_END) ? todayIso : TRIP_START;
+  document.getElementById('journalDate').value = journalDefault;
+  loadJournalForDate(journalDefault);
+  renderAll();
+});
+</script></body>
+</html>
